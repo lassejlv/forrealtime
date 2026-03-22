@@ -31,7 +31,7 @@ bun add forrealtime zod
 - `Realtime` owns your schema, Redis adapter, history settings, and channel API
 - `handle({ realtime })` turns that into a server-sent events endpoint
 - `RealtimeProvider` opens one shared `EventSource` for the active channels in your app
-- `createRealtime<Events>()` gives you a typed `useRealtime()` hook
+- `createRealtime<typeof realtime>()` gives you a typed `useRealtime()` hook inferred from your server schema
 - messages are stored in Redis Streams so reconnects can replay from the last acknowledged id
 
 ## Server quickstart
@@ -137,13 +137,43 @@ app.get("/api/realtime", (context) => realtimeHandler(context.req.raw));
 The React client has two steps:
 
 1. wrap part of your app in `RealtimeProvider`
-2. create a typed `useRealtime()` hook with `createRealtime<Events>()`
+2. create a typed `useRealtime()` hook with `createRealtime<typeof realtime>()`
 
-### Define the event shape
+### Infer types from your server
+
+Pass `typeof realtime` to `createRealtime` and the hook types are inferred directly from your Zod schema — no need to duplicate types on the client.
+
+Export `realtime` from your server file:
+
+```ts
+// server.ts
+export const realtime = new Realtime({ schema, redis });
+export const GET = handle({ realtime });
+```
+
+Then import it as a type on the client — TypeScript resolves the type without pulling in any server code:
 
 ```tsx
+// realtime.ts (client)
 import { createRealtime } from "forrealtime/client";
+import type { realtime } from "./server"; // type-only — no server code in bundle
 
+export const { useRealtime } = createRealtime<typeof realtime>();
+```
+
+If you need the inferred event types elsewhere (e.g. to type a function parameter), use `InferRealtimeEvents`:
+
+```ts
+import type { InferRealtimeEvents } from "forrealtime";
+import type { realtime } from "./server";
+
+type Events = InferRealtimeEvents<typeof realtime>;
+// { notification: { alert: string }; chat: { message: { text: string; user: string } } }
+```
+
+You can also pass a plain events type if you prefer:
+
+```tsx
 type Events = {
   notification: {
     alert: string;
@@ -304,14 +334,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { createRealtime } from "forrealtime/client";
+import type { realtime } from "./api.realtime"; // type-only import
 
-type Events = {
-  notification: {
-    alert: string;
-  };
-};
-
-const { useRealtime } = createRealtime<Events>();
+const { useRealtime } = createRealtime<typeof realtime>();
 
 export const Route = createFileRoute("/")({
   component: RouteComponent,
@@ -431,7 +456,7 @@ type RedisAdapter = {
 
 ```ts
 import { Realtime, handle } from "forrealtime";
-import type { MiddlewareContext, HandleOptions } from "forrealtime";
+import type { MiddlewareContext, HandleOptions, InferRealtimeEvents } from "forrealtime";
 ```
 
 ### React client

@@ -13,7 +13,11 @@ import {
   userEvent,
   type EventPaths,
 } from "../shared/types.ts";
+import type { InferRealtimeEvents } from "../server/realtime.ts";
 import { useRealtime, type UseRealtimeOpts } from "./use-realtime.ts";
+
+type ResolveEvents<T> =
+  InferRealtimeEvents<T> extends never ? T : InferRealtimeEvents<T>;
 
 const PING_TIMEOUT_MS = 75_000;
 
@@ -285,8 +289,8 @@ export function useRealtimeContext() {
   return context;
 }
 
-export const createRealtime = <Events extends Record<string, unknown>>() => ({
-  useRealtime: <const Event extends EventPaths<Events>>(
-    options: UseRealtimeOpts<Events, Event>,
+export const createRealtime = <T extends Record<string, unknown>>() => ({
+  useRealtime: <const Event extends EventPaths<ResolveEvents<T>>>(
+    options: UseRealtimeOpts<ResolveEvents<T>, Event>,
   ) => useRealtime(options),
 });
