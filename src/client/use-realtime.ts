@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import {
   type EventPaths,
   type EventPayloadUnion,
@@ -29,31 +29,47 @@ export function useRealtime<
     );
   }
 
+  const { register, unregister, status } = context;
+
   const registrationId = useRef(Math.random().toString(36).slice(2)).current;
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
 
+  const channelKey = useMemo(
+    () => channels.map((channel) => channel ?? "").join("\u001f"),
+    [channels],
+  );
+  const eventKey = useMemo(() => (events ?? []).join("\u001f"), [events]);
+
+  const normalizedChannels = useMemo(
+    () => channels.filter((channel): channel is string => Boolean(channel)),
+    [channelKey],
+  );
+  const normalizedEvents = useMemo(
+    () => (events ? [...events] : undefined),
+    [eventKey],
+  );
+
   useEffect(() => {
     if (enabled === false) {
-      context.unregister(registrationId);
+      unregister(registrationId);
       return;
     }
 
-    const activeChannels = channels.filter(Boolean) as string[];
-    if (activeChannels.length === 0) {
+    if (normalizedChannels.length === 0) {
       return;
     }
 
-    context.register(registrationId, activeChannels, (message) => {
+    register(registrationId, normalizedChannels, (message) => {
       const parsed = userEvent.safeParse(message);
       if (!parsed.success) {
         return;
       }
 
       if (
-        events &&
-        events.length > 0 &&
-        !events.includes(parsed.data.event as Event)
+        normalizedEvents &&
+        normalizedEvents.length > 0 &&
+        !normalizedEvents.includes(parsed.data.event as Event)
       ) {
         return;
       }
@@ -68,9 +84,16 @@ export function useRealtime<
     });
 
     return () => {
-      context.unregister(registrationId);
+      unregister(registrationId);
     };
-  }, [channels, context, enabled, events, registrationId]);
+  }, [
+    enabled,
+    normalizedChannels,
+    normalizedEvents,
+    register,
+    registrationId,
+    unregister,
+  ]);
 
-  return { status: context.status };
+  return { status };
 }

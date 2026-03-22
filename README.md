@@ -2,15 +2,39 @@
 
 Framework-agnostic realtime primitives powered by Redis Streams.
 
-The server API stays close to `@upstash/realtime`, but the Redis layer is adapter-based so you can plug in `ioredis` or roll your own adapter for another client.
+`forrealtime` keeps the server and client API close to `@upstash/realtime`, but swaps the Redis layer for adapters so you can use `ioredis`, `Bun.redis`, or your own client.
+
+## Why
+
+- framework-agnostic SSE handler that accepts a standard `Request`
+- typed events from a nested Zod schema
+- Redis Streams for history replay and reconnects
+- adapter-based Redis integration instead of a hard Upstash dependency
+- React client with a small API: `RealtimeProvider`, `createRealtime`, `useRealtime`
 
 ## Install
 
+### ioredis
+
 ```bash
-bun install forrealtime ioredis zod
+bun add forrealtime ioredis zod
 ```
 
-## Quickstart
+### Bun Redis
+
+```bash
+bun add forrealtime zod
+```
+
+## Core ideas
+
+- `Realtime` owns your schema, Redis adapter, history settings, and channel API
+- `handle({ realtime })` turns that into a server-sent events endpoint
+- `RealtimeProvider` opens one shared `EventSource` for the active channels in your app
+- `createRealtime<Events>()` gives you a typed `useRealtime()` hook
+- messages are stored in Redis Streams so reconnects can replay from the last acknowledged id
+
+## Server quickstart
 
 ```ts
 import Redis from "ioredis";
@@ -22,17 +46,50 @@ const schema = {
   notification: {
     alert: z.string(),
   },
+  chat: {
+    message: z.object({
+      text: z.string(),
+      user: z.string(),
+    }),
+  },
 };
 
 const realtime = new Realtime({
   schema,
-  redis: createIORedisAdapter(new Redis()),
+  redis: createIORedisAdapter(new Redis(process.env.REDIS_URL)),
+  history: {
+    maxLength: 1000,
+  },
 });
 
 export const GET = handle({ realtime });
 ```
 
-## Bun Redis
+## Emit events
+
+```ts
+await realtime.emit("notification.alert", "Welcome");
+
+await realtime.emit("chat.message", {
+  text: "Hello world",
+  user: "lasse",
+});
+```
+
+## Use channels
+
+```ts
+const room = realtime.channel("room:123");
+
+await room.emit("chat.message", {
+  text: "Room message",
+  user: "ada",
+});
+
+const history = await room.history({ limit: 20 });
+```
+
+## Bun Redis adapter
 
 ```ts
 import z from "zod/v4";
@@ -51,25 +108,202 @@ const realtime = new Realtime({
 export default handle({ realtime });
 ```
 
-## Hono
+## Hono example
 
 ```ts
 import { Hono } from "hono";
-import { handle } from "forrealtime";
+import z from "zod/v4";
+import { Realtime, handle } from "forrealtime";
+import { createBunRedisAdapter } from "forrealtime/adapters/bun";
 
 const app = new Hono();
 
-app.get("/realtime", async (context) => {
-  return handle({ realtime })(context.req.raw);
+const realtime = new Realtime({
+  schema: {
+    notification: {
+      alert: z.string(),
+    },
+  },
+  redis: createBunRedisAdapter(Bun.redis),
+});
+
+const realtimeHandler = handle({ realtime });
+
+app.get("/api/realtime", (context) => realtimeHandler(context.req.raw));
+```
+
+## React client
+
+The React client has two steps:
+
+1. wrap part of your app in `RealtimeProvider`
+2. create a typed `useRealtime()` hook with `createRealtime<Events>()`
+
+### Define the event shape
+
+```tsx
+import { createRealtime } from "forrealtime/client";
+
+type Events = {
+  notification: {
+    alert: string;
+  };
+  chat: {
+    message: {
+      text: string;
+      user: string;
+    };
+  };
+};
+
+export const { useRealtime } = createRealtime<Events>();
+```
+
+### Add the provider
+
+```tsx
+import { RealtimeProvider } from "forrealtime/client";
+
+export function App({ children }: { children: React.ReactNode }) {
+  return (
+    <RealtimeProvider api={{ url: "/api/realtime" }}>
+      {children}
+    </RealtimeProvider>
+  );
+}
+```
+
+### Subscribe inside a component
+
+```tsx
+import { useState } from "react";
+import { useRealtime } from "./realtime";
+
+export function Notifications() {
+  const [messages, setMessages] = useState<string[]>([]);
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert", "chat.message"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        setMessages((prev) => [...prev, `alert: ${payload.data}`]);
+      }
+
+      if (payload.event === "chat.message") {
+        setMessages((prev) => [
+          ...prev,
+          `${payload.data.user}: ${payload.data.text}`,
+        ]);
+      }
+    },
+  });
+
+  return (
+    <div>
+      <div>Status: {status}</div>
+      <pre>{JSON.stringify(messages, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+### `useRealtime()` options
+
+- `channels`: array of channel names, defaults to `"default"`
+- `events`: optional list of event names to filter on
+- `onData`: callback for typed messages
+- `enabled`: lets you pause the subscription
+
+### Returned state
+
+`useRealtime()` returns:
+
+- `status`: one of `"connecting"`, `"connected"`, `"disconnected"`, or `"error"`
+
+## TanStack Start example
+
+This matches the setup from `forrealtime-test`.
+
+### 1. Server route
+
+`src/routes/api.realtime.ts`
+
+```ts
+import { createFileRoute } from "@tanstack/react-router";
+import { getRequest } from "@tanstack/react-start/server";
+import Redis from "ioredis";
+import { z } from "zod/v4";
+import { Realtime, handle } from "forrealtime";
+import { createIORedisAdapter } from "forrealtime/adapters/ioredis";
+
+const realtime = new Realtime({
+  schema: {
+    notification: {
+      alert: z.string(),
+    },
+  },
+  redis: createIORedisAdapter(new Redis(process.env.REDIS_URL)),
+});
+
+export const Route = createFileRoute("/api/realtime")({
+  server: {
+    handlers: {
+      GET: () => {
+        const request = getRequest();
+        return handle({ realtime })(request);
+      },
+    },
+  },
 });
 ```
 
-## Client
+### 2. Add the provider at the root
+
+`src/routes/__root.tsx`
 
 ```tsx
-"use client";
+import {
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { RealtimeProvider } from "forrealtime/client";
 
-import { RealtimeProvider, createRealtime } from "forrealtime/client";
+interface MyRouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
+  shellComponent: RootDocument,
+});
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <RealtimeProvider api={{ url: "/api/realtime" }}>
+          {children}
+        </RealtimeProvider>
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+### 3. Use the hook in a route
+
+`src/routes/index.tsx`
+
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { createRealtime } from "forrealtime/client";
 
 type Events = {
   notification: {
@@ -78,6 +312,135 @@ type Events = {
 };
 
 const { useRealtime } = createRealtime<Events>();
+
+export const Route = createFileRoute("/")({
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const [messages, setMessages] = useState<string[]>([]);
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        setMessages((prev) => [...prev, `alert: ${payload.data}`]);
+      }
+    },
+  });
+
+  return (
+    <div>
+      <div>Status: {status}</div>
+      <pre>{JSON.stringify(messages, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+### 4. Emit from anywhere on the server
+
+```ts
+await realtime.emit("notification.alert", "TanStack Start is live");
+```
+
+## Middleware
+
+Use middleware to gate or reject connections before the SSE stream is opened.
+
+```ts
+const realtimeHandler = handle({
+  realtime,
+  middleware: async ({ request, channels }) => {
+    const authorized = request.headers.get("authorization") === "Bearer secret";
+
+    if (!authorized) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (channels.includes("admin")) {
+      return new Response("Forbidden", { status: 403 });
+    }
+  },
+});
+```
+
+## History and reconnects
+
+- every emitted event is written to a Redis Stream entry
+- the client keeps track of the last acknowledged id per channel
+- on reconnect, the server replays missing events from that stream
+- `history()` lets you fetch stored messages on the server
+
+```ts
+const recent = await realtime.channel("room:123").history({ limit: 50 });
+```
+
+## Create your own Redis adapter
+
+Adapters only need four methods:
+
+```ts
+type RedisAdapter = {
+  xadd(
+    channel: string,
+    payload: Record<string, unknown>,
+    options?: {
+      maxLen?: number;
+      expireAfterSecs?: number;
+    },
+  ): Promise<string>;
+
+  xrange(
+    channel: string,
+    args?: {
+      start?: string;
+      end?: string;
+      count?: number;
+    },
+  ): Promise<Array<{ id: string; payload: Record<string, unknown> }>>;
+
+  xread(args: {
+    channels: string[];
+    cursors: string[];
+    blockMs?: number;
+    count?: number;
+    signal?: AbortSignal;
+  }): Promise<
+    Array<{
+      channel: string;
+      messages: Array<{ id: string; payload: Record<string, unknown> }>;
+    }>
+  >;
+
+  getLatestCursor(channel: string): Promise<string | null>;
+};
+```
+
+## Exports
+
+### Root
+
+```ts
+import { Realtime, handle } from "forrealtime";
+```
+
+### React client
+
+```ts
+import {
+  RealtimeProvider,
+  createRealtime,
+  useRealtime,
+} from "forrealtime/client";
+```
+
+### Adapters
+
+```ts
+import { createIORedisAdapter } from "forrealtime/adapters/ioredis";
+import { createBunRedisAdapter } from "forrealtime/adapters/bun";
 ```
 
 ## Scripts
