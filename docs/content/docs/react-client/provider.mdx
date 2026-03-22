@@ -1,0 +1,24 @@
+---
+title: RealtimeProvider
+description: Opens a shared EventSource connection for your component tree.
+---
+
+`RealtimeProvider` opens one shared `EventSource` connection for all channels used anywhere in its subtree. Place it high in your component tree — typically at the root or layout level.
+
+```tsx
+import { RealtimeProvider } from "forrealtime/client";
+
+export function App({ children }: { children: React.ReactNode }) {
+  return (
+    <RealtimeProvider api={{ url: "/api/realtime" }}>
+      {children}
+    </RealtimeProvider>
+  );
+}
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `api.url` | `string` | URL of your SSE endpoint |

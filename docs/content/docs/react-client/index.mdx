@@ -1,0 +1,17 @@
+---
+title: React Client
+description: RealtimeProvider, createRealtime, and useRealtime hook for typed real-time subscriptions.
+---
+
+The React client has two steps:
+
+1. Wrap your app (or a subtree) in `RealtimeProvider`
+2. Create a typed `useRealtime()` hook with `createRealtime<typeof realtime>()`
+
+```ts
+import { RealtimeProvider, createRealtime } from "forrealtime/client";
+```
+
+- [RealtimeProvider](/docs/react-client/provider) — Opens a shared EventSource connection for your component tree
+- [useRealtime](/docs/react-client/use-realtime) — Subscribe to channels and receive typed events
+- [Type Inference](/docs/react-client/type-inference) — Infer event types directly from your server schema

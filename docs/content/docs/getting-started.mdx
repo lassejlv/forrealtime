@@ -1,0 +1,132 @@
+---
+title: Getting Started
+description: Install forrealtime and get a server-sent events endpoint running in minutes.
+---
+
+## Installation
+
+Choose your Redis client and install the matching packages.
+
+### With ioredis
+
+```bash
+bun add forrealtime ioredis zod
+```
+
+### With Bun Redis (built-in)
+
+```bash
+bun add forrealtime zod
+```
+
+## Server quickstart
+
+Define a schema, create a `Realtime` instance, and export the handler.
+
+```ts
+import Redis from "ioredis";
+import z from "zod/v4";
+import { Realtime, handle } from "forrealtime";
+import { createIORedisAdapter } from "forrealtime/adapters/ioredis";
+
+const schema = {
+  notification: {
+    alert: z.string(),
+  },
+  chat: {
+    message: z.object({
+      text: z.string(),
+      user: z.string(),
+    }),
+  },
+};
+
+const realtime = new Realtime({
+  schema,
+  redis: createIORedisAdapter(new Redis(process.env.REDIS_URL)),
+  history: {
+    maxLength: 1000,
+  },
+});
+
+// Next.js App Router — export as GET handler
+export const GET = handle({ realtime });
+```
+
+## Emit your first event
+
+Once the handler is running, emit events from any server-side code:
+
+```ts
+await realtime.emit("notification.alert", "Welcome!");
+
+await realtime.emit("chat.message", {
+  text: "Hello world",
+  user: "lasse",
+});
+```
+
+## React client quickstart
+
+Wrap your app in `RealtimeProvider` and create a typed hook:
+
+```tsx
+// realtime.ts
+import { createRealtime } from "forrealtime/client";
+import type { realtime } from "./server"; // type-only import
+
+export const { useRealtime } = createRealtime<typeof realtime>();
+```
+
+```tsx
+// App.tsx
+import { RealtimeProvider } from "forrealtime/client";
+
+export function App({ children }: { children: React.ReactNode }) {
+  return (
+    <RealtimeProvider api={{ url: "/api/realtime" }}>
+      {children}
+    </RealtimeProvider>
+  );
+}
+```
+
+```tsx
+// Notifications.tsx
+import { useState } from "react";
+import { useRealtime } from "./realtime";
+
+export function Notifications() {
+  const [messages, setMessages] = useState<string[]>([]);
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        setMessages((prev) => [...prev, payload.data]);
+      }
+    },
+  });
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <ul>
+        {messages.map((m, i) => (
+          <li key={i}>{m}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Next steps
+
+- [Server API](/docs/server) — `Realtime`, `handle`, channels, and emitting events
+- [React client](/docs/react-client) — `RealtimeProvider`, `createRealtime`, `useRealtime` options
+- [Adapters](/docs/adapters) — ioredis, Bun.redis, and custom adapters
+- [Middleware](/docs/middleware) — gate or reject connections before the stream opens
+- [History & reconnects](/docs/history) — replay missed events on reconnect
+- [Examples](/docs/examples) — Hono and TanStack Start integration

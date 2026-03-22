@@ -1,0 +1,50 @@
+---
+title: Realtime
+description: The core class that owns your schema, Redis adapter, and history settings.
+---
+
+The `Realtime` class is the core of forrealtime. It owns your schema, Redis adapter, and history settings.
+
+```ts
+import { Realtime } from "forrealtime";
+
+const realtime = new Realtime({
+  schema,
+  redis,
+  history: {
+    maxLength: 1000,
+  },
+});
+```
+
+## Constructor options
+
+| Option | Type | Description |
+|---|---|---|
+| `schema` | `Record<string, Record<string, ZodType>>` | Nested Zod schema defining event types |
+| `redis` | `RedisAdapter` | Redis adapter instance |
+| `history.maxLength` | `number` | Maximum number of events to keep per stream |
+
+## Schema shape
+
+The schema is a two-level nested object. The top level is the namespace, the second level is the event name, and the value is a Zod type:
+
+```ts
+import z from "zod/v4";
+
+const schema = {
+  notification: {
+    alert: z.string(),
+    badge: z.number(),
+  },
+  chat: {
+    message: z.object({
+      text: z.string(),
+      user: z.string(),
+    }),
+    typing: z.object({
+      user: z.string(),
+    }),
+  },
+};
+```

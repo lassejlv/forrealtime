@@ -1,0 +1,55 @@
+---
+title: Type Inference
+description: Infer event types directly from your server schema without duplicating definitions.
+---
+
+Pass `typeof realtime` to `createRealtime` and the hook's types are inferred directly from your Zod schema — no need to duplicate type definitions on the client.
+
+Export `realtime` from your server file:
+
+```ts
+// server.ts
+export const realtime = new Realtime({ schema, redis });
+export const GET = handle({ realtime });
+```
+
+Then import it as a **type** on the client — TypeScript resolves the type without pulling in any server code:
+
+```ts
+// realtime.ts (client)
+import { createRealtime } from "forrealtime/client";
+import type { realtime } from "./server"; // type-only — no server code in bundle
+
+export const { useRealtime } = createRealtime<typeof realtime>();
+```
+
+You can also pass a plain events type directly if you prefer not to import from the server:
+
+```ts
+type Events = {
+  notification: {
+    alert: string;
+  };
+  chat: {
+    message: { text: string; user: string };
+  };
+};
+
+export const { useRealtime } = createRealtime<Events>();
+```
+
+## InferRealtimeEvents
+
+Use `InferRealtimeEvents` when you need the inferred event payload types in other parts of your app — for example to type a function that accepts an event payload:
+
+```ts
+import type { InferRealtimeEvents } from "forrealtime";
+import type { realtime } from "./server";
+
+type Events = InferRealtimeEvents<typeof realtime>;
+// { notification: { alert: string }; chat: { message: { text: string; user: string } } }
+
+function handleEvent(event: Events["notification"]["alert"]) {
+  console.log(event); // string
+}
+```

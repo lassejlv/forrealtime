@@ -1,0 +1,20 @@
+---
+title: Bun Redis
+description: Use Bun's built-in Redis client with forrealtime.
+---
+
+Bun includes a built-in Redis client (`Bun.redis`) that requires no extra package.
+
+```bash
+bun add forrealtime zod
+```
+
+```ts
+import { Realtime } from "forrealtime";
+import { createBunRedisAdapter } from "forrealtime/adapters/bun";
+
+const realtime = new Realtime({
+  schema,
+  redis: createBunRedisAdapter(Bun.redis),
+});
+```

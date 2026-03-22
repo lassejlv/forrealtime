@@ -1,0 +1,116 @@
+---
+title: TanStack Start
+description: Use forrealtime with TanStack Start for full-stack React with SSR.
+---
+
+## 1. Server route
+
+```ts
+// src/routes/api.realtime.ts
+import { createFileRoute } from "@tanstack/react-router";
+import { getRequest } from "@tanstack/react-start/server";
+import Redis from "ioredis";
+import { z } from "zod/v4";
+import { Realtime, handle } from "forrealtime";
+import { createIORedisAdapter } from "forrealtime/adapters/ioredis";
+
+export const realtime = new Realtime({
+  schema: {
+    notification: {
+      alert: z.string(),
+    },
+  },
+  redis: createIORedisAdapter(new Redis(process.env.REDIS_URL)),
+});
+
+export const Route = createFileRoute("/api/realtime")({
+  server: {
+    handlers: {
+      GET: () => {
+        const request = getRequest();
+        return handle({ realtime })(request);
+      },
+    },
+  },
+});
+```
+
+## 2. Add the provider at the root
+
+```tsx
+// src/routes/__root.tsx
+import {
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { RealtimeProvider } from "forrealtime/client";
+
+interface MyRouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
+  shellComponent: RootDocument,
+});
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <RealtimeProvider api={{ url: "/api/realtime" }}>
+          {children}
+        </RealtimeProvider>
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+## 3. Use the hook in a route
+
+```tsx
+// src/routes/index.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { createRealtime } from "forrealtime/client";
+import type { realtime } from "./api.realtime"; // type-only import
+
+const { useRealtime } = createRealtime<typeof realtime>();
+
+export const Route = createFileRoute("/")({
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const [messages, setMessages] = useState<string[]>([]);
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        setMessages((prev) => [...prev, `alert: ${payload.data}`]);
+      }
+    },
+  });
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <pre>{JSON.stringify(messages, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+## 4. Emit from the server
+
+```ts
+await realtime.emit("notification.alert", "TanStack Start is live");
+```

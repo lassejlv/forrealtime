@@ -1,0 +1,43 @@
+---
+title: Bun.serve
+description: Use forrealtime with plain Bun.serve for a minimal setup.
+---
+
+```ts
+import z from "zod/v4";
+import { Realtime, handle } from "forrealtime";
+import { createBunRedisAdapter } from "forrealtime/adapters/bun";
+import index from "./index.html";
+
+const realtime = new Realtime({
+  schema: {
+    notification: {
+      alert: z.string(),
+    },
+    chat: {
+      message: z.object({ text: z.string(), user: z.string() }),
+    },
+  },
+  redis: createBunRedisAdapter(Bun.redis),
+  history: { maxLength: 500 },
+});
+
+const realtimeHandler = handle({ realtime });
+
+Bun.serve({
+  routes: {
+    "/": index,
+    "/api/realtime": {
+      GET: realtimeHandler,
+    },
+    "/api/emit": {
+      POST: async (req) => {
+        const body = await req.json();
+        await realtime.emit("chat.message", body);
+        return new Response("ok");
+      },
+    },
+  },
+  development: { hmr: true },
+});
+```

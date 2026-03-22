@@ -1,0 +1,32 @@
+---
+title: Hono
+description: Use forrealtime with the Hono web framework.
+---
+
+```bash
+bun add forrealtime hono zod
+```
+
+```ts
+import { Hono } from "hono";
+import z from "zod/v4";
+import { Realtime, handle } from "forrealtime";
+import { createBunRedisAdapter } from "forrealtime/adapters/bun";
+
+const app = new Hono();
+
+const realtime = new Realtime({
+  schema: {
+    notification: {
+      alert: z.string(),
+    },
+  },
+  redis: createBunRedisAdapter(Bun.redis),
+});
+
+const realtimeHandler = handle({ realtime });
+
+app.get("/api/realtime", (c) => realtimeHandler(c.req.raw));
+
+export default app;
+```

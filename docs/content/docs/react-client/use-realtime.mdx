@@ -1,0 +1,54 @@
+---
+title: useRealtime
+description: Subscribe to channels and receive typed events in React components.
+---
+
+`useRealtime` subscribes to one or more channels and fires a callback for each matching event.
+
+```tsx
+import { useState } from "react";
+import { useRealtime } from "./realtime";
+
+export function Notifications() {
+  const [messages, setMessages] = useState<string[]>([]);
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert", "chat.message"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        setMessages((prev) => [...prev, `alert: ${payload.data}`]);
+      }
+
+      if (payload.event === "chat.message") {
+        setMessages((prev) => [
+          ...prev,
+          `${payload.data.user}: ${payload.data.text}`,
+        ]);
+      }
+    },
+  });
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <pre>{JSON.stringify(messages, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `channels` | `string[]` | `["default"]` | Channel names to subscribe to |
+| `events` | `string[]` | all events | Event names to filter on (e.g. `["notification.alert"]`) |
+| `onData` | `(payload) => void` | — | Callback for each typed message |
+| `enabled` | `boolean` | `true` | Set to `false` to pause the subscription |
+
+## Returned state
+
+| Property | Type | Values |
+|---|---|---|
+| `status` | `string` | `"connecting"`, `"connected"`, `"disconnected"`, `"error"` |

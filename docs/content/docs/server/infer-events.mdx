@@ -1,0 +1,19 @@
+---
+title: InferRealtimeEvents
+description: Extract the inferred event payload types from a Realtime instance.
+---
+
+Use this utility type to extract the inferred event payload types from a `Realtime` instance:
+
+```ts
+import type { InferRealtimeEvents } from "forrealtime";
+import type { realtime } from "./server";
+
+type Events = InferRealtimeEvents<typeof realtime>;
+// {
+//   notification: { alert: string };
+//   chat: { message: { text: string; user: string } };
+// }
+```
+
+This is useful when you need to type a function parameter on the client without importing `createRealtime`.

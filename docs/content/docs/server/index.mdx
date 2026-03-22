@@ -1,0 +1,12 @@
+---
+title: Server API
+description: Realtime class, handle function, channels, and emitting events.
+---
+
+The server API is the core of forrealtime. It provides the `Realtime` class, the `handle` function to create SSE endpoints, channels for scoping events, and utility types for type inference.
+
+- [Realtime](/docs/server/realtime) — The core class that owns your schema, Redis adapter, and history settings
+- [handle](/docs/server/handle) — Convert a Realtime instance into an SSE endpoint
+- [Emitting Events](/docs/server/emit) — Send events to the default channel or a specific channel
+- [Channels](/docs/server/channels) — Scope events to specific groups of subscribers
+- [InferRealtimeEvents](/docs/server/infer-events) — Extract inferred event payload types

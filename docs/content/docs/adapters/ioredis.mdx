@@ -1,0 +1,21 @@
+---
+title: ioredis
+description: Use the popular ioredis client with forrealtime.
+---
+
+```bash
+bun add forrealtime ioredis zod
+```
+
+```ts
+import Redis from "ioredis";
+import { Realtime } from "forrealtime";
+import { createIORedisAdapter } from "forrealtime/adapters/ioredis";
+
+const realtime = new Realtime({
+  schema,
+  redis: createIORedisAdapter(new Redis(process.env.REDIS_URL)),
+});
+```
+
+Pass any `ioredis` client instance to `createIORedisAdapter`. This works with standalone Redis, Sentinel, and Cluster setups.

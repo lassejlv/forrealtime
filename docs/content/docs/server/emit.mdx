@@ -1,0 +1,19 @@
+---
+title: Emitting Events
+description: Send type-safe events to the default channel or a specific channel.
+---
+
+## realtime.emit
+
+Emit an event to the default channel:
+
+```ts
+await realtime.emit("notification.alert", "Hello");
+
+await realtime.emit("chat.message", {
+  text: "Hello world",
+  user: "lasse",
+});
+```
+
+The event name is `"namespace.eventName"` and the payload is validated against your Zod schema. TypeScript will infer the correct payload type from the event name.

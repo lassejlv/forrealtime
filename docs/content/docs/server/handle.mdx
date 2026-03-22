@@ -1,0 +1,36 @@
+---
+title: handle
+description: Convert a Realtime instance into an SSE endpoint handler.
+---
+
+`handle` converts a `Realtime` instance into an SSE endpoint that accepts a standard `Request` and returns a `Response`.
+
+```ts
+import { handle } from "forrealtime";
+
+const realtimeHandler = handle({ realtime });
+
+// Next.js App Router
+export const GET = realtimeHandler;
+
+// Hono
+app.get("/api/realtime", (c) => realtimeHandler(c.req.raw));
+
+// Bun.serve
+Bun.serve({
+  routes: {
+    "/api/realtime": { GET: realtimeHandler },
+  },
+});
+```
+
+## HandleOptions
+
+```ts
+import type { HandleOptions } from "forrealtime";
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `realtime` | `Realtime` | The Realtime instance |
+| `middleware` | `(ctx: MiddlewareContext) => Response \| void \| Promise<Response \| void>` | Optional middleware function |

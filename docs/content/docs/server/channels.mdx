@@ -1,0 +1,31 @@
+---
+title: Channels
+description: Scope events to specific groups of subscribers.
+---
+
+Channels let you scope events to a specific group of subscribers — a chat room, a user session, a tenant, etc.
+
+## realtime.channel
+
+```ts
+const room = realtime.channel("room:123");
+```
+
+## channel.emit
+
+```ts
+await room.emit("chat.message", {
+  text: "Room message",
+  user: "ada",
+});
+```
+
+## channel.history
+
+Fetch stored messages from the channel's Redis Stream:
+
+```ts
+const recent = await room.history({ limit: 50 });
+```
+
+Returns an array of `{ id: string; event: string; data: unknown }` entries sorted oldest-first.

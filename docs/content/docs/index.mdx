@@ -1,0 +1,31 @@
+---
+title: Introduction
+description: Framework-agnostic realtime primitives powered by Redis Streams.
+---
+
+**forrealtime** gives you typed, framework-agnostic server-sent events backed by Redis Streams. The API stays close to `@upstash/realtime`, but swaps the Redis layer for adapters so you can use ioredis, Bun.redis, or your own client.
+
+## Why forrealtime?
+
+- **Framework-agnostic SSE handler** — accepts a standard `Request`, works in Next.js, Hono, TanStack Start, and any runtime that speaks `Request`/`Response`
+- **Typed events from a nested Zod schema** — define your event shape once on the server, infer types on the client with no duplication
+- **Redis Streams for history replay** — clients reconnect and replay missed events automatically using the last acknowledged stream ID
+- **Adapter-based Redis integration** — no hard Upstash dependency; bring ioredis, Bun.redis, or write your own adapter
+- **Small React API** — `RealtimeProvider`, `createRealtime`, `useRealtime`
+
+## How it works
+
+1. You define a nested Zod schema that describes your event types
+2. `Realtime` owns the schema, Redis adapter, and channel API
+3. `handle({ realtime })` turns that into an SSE endpoint that accepts a standard `Request`
+4. `RealtimeProvider` opens one shared `EventSource` for all active channels in your app
+5. `createRealtime<typeof realtime>()` gives you a fully typed `useRealtime()` hook
+
+## Packages
+
+| Import path | Contents |
+|---|---|
+| `forrealtime` | `Realtime`, `handle`, `MiddlewareContext`, `HandleOptions`, `InferRealtimeEvents` |
+| `forrealtime/client` | `RealtimeProvider`, `createRealtime`, `useRealtime` |
+| `forrealtime/adapters/ioredis` | `createIORedisAdapter` |
+| `forrealtime/adapters/bun` | `createBunRedisAdapter` |

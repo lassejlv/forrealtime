@@ -1,0 +1,13 @@
+{
+  "title": "forrealtime",
+  "pages": [
+    "index",
+    "getting-started",
+    "server",
+    "react-client",
+    "adapters",
+    "middleware",
+    "history",
+    "examples"
+  ]
+}

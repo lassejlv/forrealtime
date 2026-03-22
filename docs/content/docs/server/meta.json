@@ -1,0 +1,9 @@
+{
+  "pages": [
+    "realtime",
+    "handle",
+    "emit",
+    "channels",
+    "infer-events"
+  ]
+}

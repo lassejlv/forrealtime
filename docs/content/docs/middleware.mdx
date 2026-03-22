@@ -1,0 +1,100 @@
+---
+title: Middleware
+description: Gate or reject SSE connections before the stream is opened.
+---
+
+Middleware lets you inspect the incoming request and the requested channels before any SSE stream is opened. Return a `Response` to reject the connection, or return nothing (or `undefined`) to allow it through.
+
+## Basic usage
+
+```ts
+import { handle } from "forrealtime";
+import type { MiddlewareContext } from "forrealtime";
+
+const auth = (ctx: MiddlewareContext) => {
+  const token = ctx.request.headers.get("authorization");
+
+  if (token !== "Bearer secret") {
+    return new Response("Unauthorized", { status: 401 });
+  }
+};
+
+export const GET = handle({ realtime, middleware: auth });
+```
+
+## MiddlewareContext
+
+The middleware function receives a single `MiddlewareContext` argument:
+
+```ts
+import type { MiddlewareContext } from "forrealtime";
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `request` | `Request` | The incoming HTTP request (headers, URL, cookies, etc.) |
+| `channels` | `string[]` | The channel names the client is requesting to subscribe to |
+
+## Checking channels
+
+You can inspect the requested channels to apply per-channel authorization:
+
+```ts
+const auth = (ctx: MiddlewareContext) => {
+  const authorized = ctx.request.headers.get("authorization") === "Bearer secret";
+
+  if (!authorized) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  if (ctx.channels.includes("admin")) {
+    return new Response("Forbidden", { status: 403 });
+  }
+};
+```
+
+## Async middleware
+
+Middleware can be async — useful for database lookups or token verification:
+
+```ts
+const auth = async (ctx: MiddlewareContext) => {
+  const token = ctx.request.headers.get("authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const user = await verifyToken(token);
+
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Private channels require admin role
+  const hasPrivateChannel = ctx.channels.some((c) => c.startsWith("private:"));
+  if (hasPrivateChannel && user.role !== "admin") {
+    return new Response("Forbidden", { status: 403 });
+  }
+};
+
+export const GET = handle({ realtime, middleware: auth });
+```
+
+## Cookie-based auth
+
+```ts
+import { handle } from "forrealtime";
+import type { MiddlewareContext } from "forrealtime";
+
+const cookieAuth = (ctx: MiddlewareContext) => {
+  const cookie = ctx.request.headers.get("cookie") ?? "";
+  const session = parseCookies(cookie).session;
+
+  if (!session || !isValidSession(session)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+};
+
+export const GET = handle({ realtime, middleware: cookieAuth });
+```

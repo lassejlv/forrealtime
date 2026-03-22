@@ -1,0 +1,7 @@
+{
+  "pages": [
+    "provider",
+    "use-realtime",
+    "type-inference"
+  ]
+}

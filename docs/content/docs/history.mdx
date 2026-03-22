@@ -1,0 +1,118 @@
+---
+title: History & Reconnects
+description: How Redis Streams power event history and automatic reconnect replay.
+---
+
+forrealtime stores every emitted event in a Redis Stream. When a client reconnects, the server replays any events the client missed — ensuring no messages are lost during brief disconnects.
+
+## How it works
+
+1. Every `realtime.emit()` call appends an entry to a Redis Stream for the target channel
+2. The client tracks the **last acknowledged stream ID** for each channel it subscribes to
+3. When the `EventSource` reconnects (after a network drop or server restart), it sends the last known IDs to the server via query parameters
+4. The server fetches all stream entries after those IDs and replays them before resuming live events
+
+This means clients automatically catch up after a disconnect without any extra code on your part.
+
+## Configuring history
+
+Set `history.maxLength` on the `Realtime` constructor to limit how many events are kept per stream:
+
+```ts
+const realtime = new Realtime({
+  schema,
+  redis,
+  history: {
+    maxLength: 1000,
+  },
+});
+```
+
+When the stream exceeds `maxLength`, the oldest entries are trimmed. This keeps memory usage bounded while still supporting reconnect replay for recent events.
+
+## Fetching history on the server
+
+Use `channel.history()` to fetch stored messages from any server-side code — useful for server-rendering the initial state of a chat, notification feed, or activity log:
+
+```ts
+const room = realtime.channel("room:123");
+
+const recent = await room.history({ limit: 50 });
+```
+
+The returned array contains entries sorted oldest-first:
+
+```ts
+[
+  { id: "1700000000000-0", event: "chat.message", data: { text: "Hello", user: "ada" } },
+  { id: "1700000001000-0", event: "chat.message", data: { text: "World", user: "lasse" } },
+]
+```
+
+### history options
+
+| Option | Type | Description |
+|---|---|---|
+| `limit` | `number` | Maximum number of entries to return |
+| `after` | `string` | Stream ID to start from (exclusive) — useful for pagination |
+
+## Example: server-rendered history
+
+Fetch the last 20 messages and pass them as initial state to a client component:
+
+```tsx
+// page.tsx (Next.js App Router)
+import { realtime } from "@/lib/realtime";
+import { ChatRoom } from "./ChatRoom";
+
+export default async function Page({ params }: { params: { roomId: string } }) {
+  const room = realtime.channel(`room:${params.roomId}`);
+  const history = await room.history({ limit: 20 });
+
+  return <ChatRoom initialMessages={history} roomId={params.roomId} />;
+}
+```
+
+```tsx
+// ChatRoom.tsx
+"use client";
+
+import { useState } from "react";
+import { useRealtime } from "@/lib/realtime";
+
+type Message = { text: string; user: string };
+
+export function ChatRoom({
+  initialMessages,
+  roomId,
+}: {
+  initialMessages: { event: string; data: unknown }[];
+  roomId: string;
+}) {
+  const [messages, setMessages] = useState<Message[]>(
+    initialMessages
+      .filter((m) => m.event === "chat.message")
+      .map((m) => m.data as Message),
+  );
+
+  useRealtime({
+    channels: [roomId],
+    events: ["chat.message"],
+    onData(payload) {
+      if (payload.event === "chat.message") {
+        setMessages((prev) => [...prev, payload.data]);
+      }
+    },
+  });
+
+  return (
+    <ul>
+      {messages.map((m, i) => (
+        <li key={i}>
+          <strong>{m.user}</strong>: {m.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
