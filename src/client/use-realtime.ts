@@ -1,5 +1,3 @@
-"use client";
-
 import { useContext, useEffect, useRef } from "react";
 import {
   type EventPaths,
