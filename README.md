@@ -347,24 +347,31 @@ await realtime.emit("notification.alert", "TanStack Start is live");
 
 ## Middleware
 
-Use middleware to gate or reject connections before the SSE stream is opened.
+Use middleware to gate or reject connections before the SSE stream is opened. Return a `Response` to reject, or return nothing to allow.
 
 ```ts
-const realtimeHandler = handle({
-  realtime,
-  middleware: async ({ request, channels }) => {
-    const authorized = request.headers.get("authorization") === "Bearer secret";
+import { handle } from "forrealtime";
+import type { MiddlewareContext } from "forrealtime";
 
-    if (!authorized) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+const auth = (ctx: MiddlewareContext) => {
+  const authorized = ctx.request.headers.get("authorization") === "Bearer secret";
 
-    if (channels.includes("admin")) {
-      return new Response("Forbidden", { status: 403 });
-    }
-  },
-});
+  if (!authorized) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  if (ctx.channels.includes("admin")) {
+    return new Response("Forbidden", { status: 403 });
+  }
+};
+
+const realtimeHandler = handle({ realtime, middleware: auth });
 ```
+
+`MiddlewareContext` has:
+
+- `request`: the incoming `Request` object (headers, URL, cookies, etc.)
+- `channels`: array of channel names the client is subscribing to
 
 ## History and reconnects
 
@@ -424,6 +431,7 @@ type RedisAdapter = {
 
 ```ts
 import { Realtime, handle } from "forrealtime";
+import type { MiddlewareContext, HandleOptions } from "forrealtime";
 ```
 
 ### React client
