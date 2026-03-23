@@ -1,7 +1,7 @@
 {
   "name": "forrealtime",
   "type": "module",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Framework-agnostic realtime primitives powered by Redis Streams.",
   "license": "MIT",
   "main": "./dist/index.cjs",
@@ -26,6 +26,11 @@
       "import": "./dist/client/index.js",
       "require": "./dist/client/index.cjs"
     },
+    "./client/svelte": {
+      "types": "./dist/client/svelte.d.ts",
+      "import": "./dist/client/svelte.js",
+      "require": "./dist/client/svelte.cjs"
+    },
     "./adapters/ioredis": {
       "types": "./dist/adapters/ioredis.d.ts",
       "import": "./dist/adapters/ioredis.js",
@@ -48,6 +53,7 @@
     "ioredis": "^5.0.0",
     "react": ">=18",
     "react-dom": ">=18",
+    "svelte": ">=4",
     "zod": "^4.0.0"
   },
   "peerDependenciesMeta": {
@@ -59,6 +65,9 @@
     },
     "react-dom": {
       "optional": true
+    },
+    "svelte": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -69,6 +78,7 @@
     "ioredis": "^5.8.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "svelte": "^5.39.6",
     "tsdown": "^0.21.3",
     "typescript": "^5.9.3",
     "zod": "^4.1.11"

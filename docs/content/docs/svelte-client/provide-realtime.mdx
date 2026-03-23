@@ -1,0 +1,40 @@
+---
+title: provideRealtime
+description: Create a shared realtime client in Svelte context for a component subtree.
+---
+
+`provideRealtime` creates a `RealtimeClient`, stores it in Svelte context, and destroys it automatically when the parent component unmounts. Call it once in a parent component, typically your root layout or app shell.
+
+```svelte
+<script lang="ts">
+  import { provideRealtime } from "forrealtime/client/svelte";
+
+  provideRealtime({
+    api: { url: "/api/realtime" },
+  });
+</script>
+
+<slot />
+```
+
+## Options
+
+| Option | Type | Description |
+|---|---|---|
+| `api.url` | `string` | URL of your SSE endpoint |
+
+## Return value
+
+`provideRealtime()` returns the created `RealtimeClient` if you need to keep a local reference in the provider component.
+
+## getRealtimeContext
+
+Use `getRealtimeContext()` in descendant components when you need direct access to the shared client instance instead of the higher-level `useRealtime()` helper.
+
+```ts
+import { getRealtimeContext } from "forrealtime/client/svelte";
+
+const client = getRealtimeContext();
+```
+
+It throws if no parent component has called `provideRealtime()` first.

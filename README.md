@@ -11,6 +11,7 @@ Framework-agnostic realtime primitives powered by Redis Streams.
 - Redis Streams for history replay and reconnects
 - adapter-based Redis integration instead of a hard Upstash dependency
 - React client with a small API: `RealtimeProvider`, `createRealtime`, `useRealtime`
+- Svelte client support via `forrealtime/client/svelte`
 
 ## Install
 
@@ -250,6 +251,57 @@ export function Notifications() {
 `useRealtime()` returns:
 
 - `status`: one of `"connecting"`, `"connected"`, `"disconnected"`, or `"error"`
+
+## Svelte client
+
+The Svelte client uses the same typed `createRealtime<typeof realtime>()` helper, but exposes a provider function instead of a React component.
+
+### Provide the client in a parent component
+
+```svelte
+<script lang="ts">
+  import { provideRealtime } from "forrealtime/client/svelte";
+
+  provideRealtime({
+    api: { url: "/api/realtime" },
+  });
+</script>
+
+<slot />
+```
+
+### Create a typed subscription helper
+
+```ts
+// realtime.ts
+import { createRealtime } from "forrealtime/client/svelte";
+import type { realtime } from "./server";
+
+export const { useRealtime } = createRealtime<typeof realtime>();
+```
+
+### Subscribe in a component
+
+```svelte
+<script lang="ts">
+  import { writable } from "svelte/store";
+  import { useRealtime } from "./realtime";
+
+  const messages = writable<string[]>([]);
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["chat.message"],
+    onData(payload) {
+      messages.update((current) => [...current, payload.data.text]);
+    },
+  });
+</script>
+
+<div>Status: {$status}</div>
+<pre>{JSON.stringify($messages, null, 2)}</pre>
+```
+
+If your channels, events, or `enabled` flag are reactive, pass a Svelte store of options to `useRealtime(...)` and it will resubscribe when that store changes.
 
 ## TanStack Start example
 

@@ -1,25 +1,19 @@
-import { useContext, useEffect, useMemo, useRef } from "react";
 import {
-  type EventPaths,
-  type EventPayloadUnion,
-  userEvent,
-} from "../shared/types.ts";
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
+import type { EventPaths, EventPayloadUnion } from "../shared/types.ts";
+import type { UseRealtimeOpts } from "./core.ts";
 import { RealtimeContext } from "./provider.tsx";
 
-export interface UseRealtimeOpts<
-  Events extends Record<string, unknown>,
-  Event extends string,
-> {
-  events?: readonly Event[];
-  onData?: (payload: EventPayloadUnion<Events, Event>) => void;
-  channels?: readonly (string | undefined)[];
-  enabled?: boolean;
-}
+export type { UseRealtimeOpts } from "./core.ts";
 
-export function useRealtime<
-  Events extends Record<string, unknown>,
-  const Event extends EventPaths<Events>,
->(options: UseRealtimeOpts<Events, Event>) {
+export function useRealtime<Events, Event extends EventPaths<Events>>(
+  options: UseRealtimeOpts<Events, Event>,
+) {
   const { channels = ["default"], events, onData, enabled } = options;
 
   const context = useContext(RealtimeContext);
@@ -29,9 +23,11 @@ export function useRealtime<
     );
   }
 
-  const { register, unregister, status } = context;
-
-  const registrationId = useRef(Math.random().toString(36).slice(2)).current;
+  const status = useSyncExternalStore(
+    (onStoreChange) => context.subscribeStatus(onStoreChange),
+    () => context.getStatus(),
+    () => context.getStatus(),
+  );
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
 
@@ -51,50 +47,16 @@ export function useRealtime<
   );
 
   useEffect(() => {
-    if (enabled === false) {
-      unregister(registrationId);
-      return;
-    }
-
-    if (normalizedChannels.length === 0) {
-      return;
-    }
-
-    register(registrationId, normalizedChannels, (message) => {
-      const parsed = userEvent.safeParse(message);
-      if (!parsed.success) {
-        return;
-      }
-
-      if (
-        normalizedEvents &&
-        normalizedEvents.length > 0 &&
-        !normalizedEvents.includes(parsed.data.event as Event)
-      ) {
-        return;
-      }
-
-      const payload = {
-        id: parsed.data.id,
-        channel: parsed.data.channel,
-        event: parsed.data.event as Event,
-        data: parsed.data.data as EventPayloadUnion<Events, Event>["data"],
-      } as EventPayloadUnion<Events, Event>;
-
-      onDataRef.current?.(payload);
+    const unsubscribe = context.subscribe<Events, Event>({
+      channels: normalizedChannels,
+      enabled,
+      events: normalizedEvents,
+      onData(payload: EventPayloadUnion<Events, Event>) {
+        onDataRef.current?.(payload);
+      },
     });
-
-    return () => {
-      unregister(registrationId);
-    };
-  }, [
-    enabled,
-    normalizedChannels,
-    normalizedEvents,
-    register,
-    registrationId,
-    unregister,
-  ]);
+    return unsubscribe;
+  }, [context, enabled, normalizedChannels, normalizedEvents]);
 
   return { status };
 }

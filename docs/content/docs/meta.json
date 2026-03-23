@@ -5,6 +5,7 @@
     "getting-started",
     "server",
     "react-client",
+    "svelte-client",
     "adapters",
     "middleware",
     "history",

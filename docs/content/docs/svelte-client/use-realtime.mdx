@@ -1,0 +1,77 @@
+---
+title: useRealtime
+description: Subscribe to channels and receive typed events in Svelte components.
+---
+
+`useRealtime` subscribes to one or more channels, fires a callback for each matching event, and returns a readable `status` store.
+
+```svelte
+<script lang="ts">
+  import { useRealtime } from "./realtime";
+
+  let messages: string[] = [];
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert", "chat.message"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        messages = [...messages, `alert: ${payload.data}`];
+      }
+
+      if (payload.event === "chat.message") {
+        messages = [
+          ...messages,
+          `${payload.data.user}: ${payload.data.text}`,
+        ];
+      }
+    },
+  });
+</script>
+
+<div>
+  <p>Status: {$status}</p>
+  <pre>{JSON.stringify(messages, null, 2)}</pre>
+</div>
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `channels` | `string[]` | `["default"]` | Channel names to subscribe to |
+| `events` | `string[]` | all events | Event names to filter on (for example `"notification.alert"`) |
+| `onData` | `(payload) => void` | — | Callback for each typed message |
+| `enabled` | `boolean` | `true` | Set to `false` to pause the subscription |
+
+## Reactive options
+
+If `channels`, `events`, or `enabled` are reactive, pass a Svelte store of options to `useRealtime(...)`. The hook unsubscribes from the previous selection and resubscribes whenever that store emits a new value.
+
+```svelte
+<script lang="ts">
+  import { derived, writable } from "svelte/store";
+  import { useRealtime } from "./realtime";
+
+  const channel = writable("default");
+  const enabled = writable(true);
+
+  const options = derived([channel, enabled], ([$channel, $enabled]) => ({
+    channels: [$channel],
+    enabled: $enabled,
+    onData(payload) {
+      console.log(payload);
+    },
+  }));
+
+  const { status } = useRealtime(options);
+</script>
+
+<p>Status: {$status}</p>
+```
+
+## Returned state
+
+| Property | Type | Values |
+|---|---|---|
+| `status` | `Readable<string>` | `"connecting"`, `"connected"`, `"disconnected"`, `"error"` |

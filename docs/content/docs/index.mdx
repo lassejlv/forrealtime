@@ -11,14 +11,14 @@ description: Framework-agnostic realtime primitives powered by Redis Streams.
 - **Typed events from a nested Zod schema** — define your event shape once on the server, infer types on the client with no duplication
 - **Redis Streams for history replay** — clients reconnect and replay missed events automatically using the last acknowledged stream ID
 - **Adapter-based Redis integration** — no hard Upstash dependency; bring ioredis, Bun.redis, or write your own adapter
-- **Small React API** — `RealtimeProvider`, `createRealtime`, `useRealtime`
+- **Small React and Svelte client APIs** — `RealtimeProvider`, `provideRealtime`, `createRealtime`, `useRealtime`
 
 ## How it works
 
 1. You define a nested Zod schema that describes your event types
 2. `Realtime` owns the schema, Redis adapter, and channel API
 3. `handle({ realtime })` turns that into an SSE endpoint that accepts a standard `Request`
-4. `RealtimeProvider` opens one shared `EventSource` for all active channels in your app
+4. `RealtimeProvider` (React) or `provideRealtime()` (Svelte) opens one shared `EventSource` for the active channels in your app
 5. `createRealtime<typeof realtime>()` gives you a fully typed `useRealtime()` hook
 
 ## Packages
@@ -27,5 +27,6 @@ description: Framework-agnostic realtime primitives powered by Redis Streams.
 |---|---|
 | `forrealtime` | `Realtime`, `handle`, `MiddlewareContext`, `HandleOptions`, `InferRealtimeEvents` |
 | `forrealtime/client` | `RealtimeProvider`, `createRealtime`, `useRealtime` |
+| `forrealtime/client/svelte` | `provideRealtime`, `getRealtimeContext`, `createRealtime`, `useRealtime` |
 | `forrealtime/adapters/ioredis` | `createIORedisAdapter` |
 | `forrealtime/adapters/bun` | `createBunRedisAdapter` |

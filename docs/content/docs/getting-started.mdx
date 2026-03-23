@@ -122,10 +122,64 @@ export function Notifications() {
 }
 ```
 
+## Svelte client quickstart
+
+Call `provideRealtime()` in a parent component and create the same typed `useRealtime()` helper:
+
+```ts
+// realtime.ts
+import { createRealtime } from "forrealtime/client/svelte";
+import type { realtime } from "./server"; // type-only import
+
+export const { useRealtime } = createRealtime<typeof realtime>();
+```
+
+```svelte
+<!-- +layout.svelte or App.svelte -->
+<script lang="ts">
+  import { provideRealtime } from "forrealtime/client/svelte";
+
+  provideRealtime({
+    api: { url: "/api/realtime" },
+  });
+</script>
+
+<slot />
+```
+
+```svelte
+<!-- Notifications.svelte -->
+<script lang="ts">
+  import { useRealtime } from "./realtime";
+
+  let messages: string[] = [];
+
+  const { status } = useRealtime({
+    channels: ["default"],
+    events: ["notification.alert"],
+    onData(payload) {
+      if (payload.event === "notification.alert") {
+        messages = [...messages, payload.data];
+      }
+    },
+  });
+</script>
+
+<div>
+  <p>Status: {$status}</p>
+  <ul>
+    {#each messages as message}
+      <li>{message}</li>
+    {/each}
+  </ul>
+</div>
+```
+
 ## Next steps
 
 - [Server API](/docs/server) — `Realtime`, `handle`, channels, and emitting events
 - [React client](/docs/react-client) — `RealtimeProvider`, `createRealtime`, `useRealtime` options
+- [Svelte client](/docs/svelte-client) — `provideRealtime`, `createRealtime`, reactive `useRealtime` options
 - [Adapters](/docs/adapters) — ioredis, Bun.redis, and custom adapters
 - [Middleware](/docs/middleware) — gate or reject connections before the stream opens
 - [History & reconnects](/docs/history) — replay missed events on reconnect

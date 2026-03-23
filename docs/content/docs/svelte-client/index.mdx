@@ -1,0 +1,17 @@
+---
+title: Svelte Client
+description: provideRealtime, createRealtime, and useRealtime for typed real-time subscriptions in Svelte.
+---
+
+The Svelte client has two steps:
+
+1. Call `provideRealtime()` in a parent component
+2. Create a typed `useRealtime()` helper with `createRealtime<typeof realtime>()`
+
+```ts
+import { provideRealtime, createRealtime } from "forrealtime/client/svelte";
+```
+
+- [provideRealtime](/docs/svelte-client/provide-realtime) — Create a shared realtime client for a component subtree
+- [useRealtime](/docs/svelte-client/use-realtime) — Subscribe to channels and receive typed events
+- [Type Inference](/docs/svelte-client/type-inference) — Infer event types directly from your server schema

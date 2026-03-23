@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     "client/index": "src/client/index.ts",
+    "client/svelte": "src/client/svelte.ts",
     "adapters/ioredis": "src/adapters/ioredis.ts",
     "adapters/bun": "src/adapters/bun.ts",
   },
@@ -17,6 +18,6 @@ export default defineConfig({
   treeshake: true,
   exports: false,
   deps: {
-    neverBundle: ["ioredis", "react", "react-dom", "zod"],
+    neverBundle: ["ioredis", "react", "react-dom", "svelte", "zod"],
   },
 });
