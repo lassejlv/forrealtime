@@ -1,7 +1,7 @@
 {
   "name": "forrealtime",
   "type": "module",
-  "version": "0.1.7",
+  "version": "0.1.10",
   "description": "Framework-agnostic realtime primitives powered by Redis Streams.",
   "license": "MIT",
   "main": "./dist/index.cjs",

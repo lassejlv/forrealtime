@@ -289,7 +289,7 @@ export function useRealtimeContext() {
   return context;
 }
 
-export const createRealtime = <T extends Record<string, unknown>>() => ({
+export const createRealtime = <T extends object>() => ({
   useRealtime: <const Event extends EventPaths<ResolveEvents<T>>>(
     options: UseRealtimeOpts<ResolveEvents<T>, Event>,
   ) => useRealtime(options),

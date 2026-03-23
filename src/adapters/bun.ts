@@ -8,7 +8,10 @@ import type {
 } from "../shared/redis-adapter.ts";
 
 type BunRangeResponse = Array<[string, string[]]>;
-type BunReadResponse = Array<[string, Array<[string, string[]]>]> | null;
+type BunReadResponse =
+  | Array<[string, Array<[string, string[]]>]>
+  | Record<string, Array<[string, string[]]>>
+  | null;
 
 type BunRedisReader = Pick<Bun.RedisClient, "send">;
 
@@ -120,7 +123,14 @@ function parseReadResponse(
     return [];
   }
 
-  return response.flatMap(([key, entries]) => {
+  // Bun.redis uses RESP3 which returns maps as plain objects instead of arrays of pairs
+  const pairs: Array<[string, Array<[string, string[]]>]> = Array.isArray(
+    response,
+  )
+    ? response
+    : (Object.entries(response) as Array<[string, Array<[string, string[]]>]>);
+
+  return pairs.flatMap(([key, entries]) => {
     const channel =
       prefix.length > 0 && key.startsWith(prefix)
         ? key.slice(prefix.length)

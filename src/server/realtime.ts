@@ -351,18 +351,10 @@ export type Realtime<T extends Opts> = RealtimeBase<T> & {
   channel: (name: string) => RealtimeChannel<T>;
 } & RealtimeChannel<T>;
 
-type InferSchemaRecursive<T> = {
-  [Key in keyof T]: T[Key] extends z.$ZodType
-    ? z.infer<T[Key]>
-    : T[Key] extends object
-      ? InferSchemaRecursive<T[Key]>
-      : never;
-};
-
 export type InferRealtimeEvents<T> =
   T extends Realtime<infer Options>
     ? Options["schema"] extends Schema
-      ? InferSchemaRecursive<Options["schema"]>
+      ? Options["schema"]
       : never
     : never;
 
