@@ -7,6 +7,7 @@ export default defineConfig({
     "client/svelte": "src/client/svelte.ts",
     "adapters/ioredis": "src/adapters/ioredis.ts",
     "adapters/bun": "src/adapters/bun.ts",
+    "plugins/postgres-sync": "src/plugins/postgres-sync.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

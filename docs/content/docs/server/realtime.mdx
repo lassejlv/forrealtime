@@ -24,6 +24,7 @@ const realtime = new Realtime({
 | `schema` | `Record<string, Record<string, ZodType>>` | Nested Zod schema defining event types |
 | `redis` | `RedisAdapter` | Redis adapter instance |
 | `history.maxLength` | `number` | Maximum number of events to keep per stream |
+| `plugins` | `RealtimePlugin[]` | Plugins to extend the instance with additional methods |
 
 ## Schema shape
 

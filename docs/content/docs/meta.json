@@ -9,6 +9,7 @@
     "adapters",
     "middleware",
     "history",
+    "plugins",
     "examples"
   ]
 }

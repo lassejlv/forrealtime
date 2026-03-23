@@ -8,6 +8,11 @@ import {
   type Schema,
   userEvent,
 } from "../shared/types.ts";
+import type {
+  InferPlugins,
+  RealtimePlugin,
+  RealtimePluginContext,
+} from "./plugin.ts";
 
 const DEFAULT_MAX_DURATION_SECONDS = 300;
 const DEFAULT_READ_BLOCK_MS = 1000;
@@ -23,6 +28,7 @@ export interface Opts {
         expireAfterSecs?: number;
       }
     | boolean;
+  plugins?: readonly RealtimePlugin[];
 }
 
 type HistoryConfig = {
@@ -86,6 +92,19 @@ class RealtimeBase<T extends Opts> {
       typeof options.history === "boolean" ? {} : (options.history ?? {});
 
     Object.assign(this, this.createChannel("default"));
+
+    for (const plugin of options.plugins ?? []) {
+      const context: RealtimePluginContext = {
+        emit: (channel, event, data) =>
+          this.channel(channel).emit(
+            event as EventPath<T>,
+            data as EventData<T, typeof event>,
+          ),
+        logger: this._logger,
+      };
+      const { api } = plugin.init(context);
+      Object.assign(this, api);
+    }
   }
 
   channel(channel: string): RealtimeChannel<T> {
@@ -349,7 +368,10 @@ export interface HistoryMessage {
 
 export type Realtime<T extends Opts> = RealtimeBase<T> & {
   channel: (name: string) => RealtimeChannel<T>;
-} & RealtimeChannel<T>;
+} & RealtimeChannel<T> &
+  (T["plugins"] extends readonly RealtimePlugin[]
+    ? InferPlugins<T["plugins"]>
+    : object);
 
 export type InferRealtimeEvents<T> =
   T extends Realtime<infer Options>

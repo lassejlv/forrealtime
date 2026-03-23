@@ -1,0 +1,59 @@
+---
+title: Plugins
+description: Extend your Realtime instance with additional functionality via the plugin system.
+---
+
+Plugins let you extend a `Realtime` instance with new methods — similar to the plugin model in [better-auth](https://www.better-auth.com). Pass them at instantiation and TypeScript automatically infers the added API.
+
+```ts
+import { Realtime } from "forrealtime";
+import { postgresSync } from "forrealtime/plugins/postgres-sync";
+
+const realtime = new Realtime({
+  schema,
+  redis,
+  plugins: [
+    postgresSync({ sql: Bun.sql, tables: ["users", "posts"] }),
+  ],
+});
+
+// Methods added by the plugin are fully typed:
+await realtime.pg.start();
+```
+
+## How it works
+
+Each plugin receives a `RealtimePluginContext` at startup and returns an `api` object. That object gets merged onto the `Realtime` instance at construction time via `Object.assign`, and TypeScript infers the added methods from the plugin's return type.
+
+## Writing your own plugin
+
+```ts
+import type { RealtimePlugin } from "forrealtime";
+
+function myPlugin(): RealtimePlugin<{ greet(): string }> {
+  return {
+    name: "my-plugin",
+    init(context) {
+      return {
+        api: {
+          greet() {
+            context.logger.log("hello from my plugin");
+            return "hello!";
+          },
+        },
+      };
+    },
+  };
+}
+```
+
+### `RealtimePluginContext`
+
+| Property | Type | Description |
+|---|---|---|
+| `emit` | `(channel, event, data) => Promise<void>` | Emit an event on any channel |
+| `logger` | `{ log, warn, error }` | Forwards to the `Realtime` instance logger (respects `verbose`) |
+
+## Available plugins
+
+- [postgresSync](/docs/plugins/postgres-sync) — Stream PostgreSQL table changes to realtime clients

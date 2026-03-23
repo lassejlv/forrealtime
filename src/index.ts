@@ -1,4 +1,5 @@
 export { handle, StreamingResponse } from "./server/handler.ts";
+export type { RealtimePlugin, RealtimePluginContext } from "./server/plugin.ts";
 export type { MiddlewareContext, HandleOptions } from "./server/handler.ts";
 export {
   Realtime,
