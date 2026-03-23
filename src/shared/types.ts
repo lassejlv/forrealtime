@@ -70,6 +70,7 @@ type EventDataAtPath<
 
 export type EventPayloadUnion<T, Event extends string> = Event extends unknown
   ? {
+      id: string;
       event: Event;
       data: z.infer<EventDataAtPath<T, Event>>;
       channel: string;
