@@ -75,6 +75,7 @@ export function useRealtime<
       }
 
       const payload = {
+        id: parsed.data.id,
         channel: parsed.data.channel,
         event: parsed.data.event as Event,
         data: parsed.data.data as EventPayloadUnion<Events, Event>["data"],
