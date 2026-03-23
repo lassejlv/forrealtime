@@ -10,8 +10,7 @@ Framework-agnostic realtime primitives powered by Redis Streams.
 - typed events from a nested Zod schema
 - Redis Streams for history replay and reconnects
 - adapter-based Redis integration instead of a hard Upstash dependency
-- React client with a small API: `RealtimeProvider`, `createRealtime`, `useRealtime`
-- Svelte client support via `forrealtime/client/svelte`
+- React and Svelte clients with small APIs: `RealtimeProvider`, `provideRealtime`, `createRealtime`, `useRealtime`
 
 ## Install
 
@@ -31,7 +30,7 @@ bun add forrealtime zod
 
 - `Realtime` owns your schema, Redis adapter, history settings, and channel API
 - `handle({ realtime })` turns that into a server-sent events endpoint
-- `RealtimeProvider` opens one shared `EventSource` for the active channels in your app
+- `RealtimeProvider` (React) or `provideRealtime()` (Svelte) opens one shared `EventSource` for the active channels in your app
 - `createRealtime<typeof realtime>()` gives you a typed `useRealtime()` hook inferred from your server schema
 - messages are stored in Redis Streams so reconnects can replay from the last acknowledged id
 
@@ -254,7 +253,7 @@ export function Notifications() {
 
 ## Svelte client
 
-The Svelte client uses the same typed `createRealtime<typeof realtime>()` helper, but exposes a provider function instead of a React component.
+The Svelte client uses the same typed `createRealtime<typeof realtime>()` helper, but exposes context-based helpers instead of a React component.
 
 ### Provide the client in a parent component
 
@@ -270,6 +269,8 @@ The Svelte client uses the same typed `createRealtime<typeof realtime>()` helper
 <slot />
 ```
 
+`provideRealtime()` creates a shared `RealtimeClient`, stores it in Svelte context, and destroys it automatically when the parent component unmounts.
+
 ### Create a typed subscription helper
 
 ```ts
@@ -280,28 +281,76 @@ import type { realtime } from "./server";
 export const { useRealtime } = createRealtime<typeof realtime>();
 ```
 
+### Access the shared client directly
+
+If you need the client instance itself in a child component, use `getRealtimeContext()`:
+
+```ts
+import { getRealtimeContext } from "forrealtime/client/svelte";
+
+const client = getRealtimeContext();
+```
+
+It throws if no parent component has called `provideRealtime()` first.
+
 ### Subscribe in a component
 
 ```svelte
 <script lang="ts">
-  import { writable } from "svelte/store";
   import { useRealtime } from "./realtime";
 
-  const messages = writable<string[]>([]);
+  let messages: string[] = [];
   const { status } = useRealtime({
     channels: ["default"],
     events: ["chat.message"],
     onData(payload) {
-      messages.update((current) => [...current, payload.data.text]);
+      messages = [...messages, payload.data.text];
     },
   });
 </script>
 
 <div>Status: {$status}</div>
-<pre>{JSON.stringify($messages, null, 2)}</pre>
+<pre>{JSON.stringify(messages, null, 2)}</pre>
 ```
 
+### Reactive options
+
 If your channels, events, or `enabled` flag are reactive, pass a Svelte store of options to `useRealtime(...)` and it will resubscribe when that store changes.
+
+```svelte
+<script lang="ts">
+  import { derived, writable } from "svelte/store";
+  import { useRealtime } from "./realtime";
+
+  const channel = writable("default");
+  const enabled = writable(true);
+
+  const options = derived([channel, enabled], ([$channel, $enabled]) => ({
+    channels: [$channel],
+    enabled: $enabled,
+    onData(payload) {
+      console.log(payload);
+    },
+  }));
+
+  const { status } = useRealtime(options);
+</script>
+
+<div>Status: {$status}</div>
+```
+
+### `useRealtime()` options
+
+- `channels`: array of channel names, defaults to `"default"`
+- `events`: optional list of event names to filter on
+- `onData`: callback for typed messages
+- `enabled`: lets you pause the subscription
+
+### Returned state
+
+`useRealtime()` returns:
+
+- `status`: a readable store with `"connecting"`, `"connected"`, `"disconnected"`, or `"error"`
 
 ## TanStack Start example
 
